@@ -29,6 +29,12 @@ Not girişinde düzenleme ve silme yolu bulunmuyordu. Yanlış bir puan veya ağ
 
 Bu seçim mevcut verileri tekrar kullanır; hesaplamalar cihaz ve sunucu uygulama mantığında yapılır, yeni ücretli hizmet gerektirmez.
 
+## Bağlantı kesildiğinde temel planın sürmesi
+
+Uygulama daha önce "sunucuya ulaşılamadı" diyerek ders, görev ve çalışma planına erişimi de kesiyordu. Bu, öğrencinin en çok ihtiyaç duyduğu temel verileri tek sunucunun erişilebilirliğine bağlı bırakıyordu. İlk başarılı çevrimiçi girişten sonra temel çalışma alanı artık aynı cihazda şifreli saklanır; kullanıcı kayıtlı e-posta ve şifresiyle internet yokken açabilir. Temel ekleme ve düzenlemeler yerel kuyruğa yazılır ve bağlantı ile hesap doğrulaması geri geldiğinde sırayla eşitlenir.
+
+PDF yükleme/işleme, AI, mesajlar ve canlı yönetim özellikleri çevrimiçi kalır. Yerel kopya tarayıcı profiline bağlıdır; cihazlar arasında kendiliğinden paylaşılmaz. Güvenli tarayıcı saklaması HTTPS veya `localhost` gerektirir. Bu özellik, kampüs Wi-Fi'si veya geçici sunucu kesintilerinde öğrencinin programına ve görevlerine erişmesini sağlayarak CampusFlow'un güvenilirliğini ürün vaadinin bir parçası yapar.
+
 ## Değerlendirmenin kanıtı ve sınırları
 
 Bu, mevcut depo ve yükseköğretimde öğrenme planlaması araştırmalarına dayalı bir ilk ürün değerlendirmesidir. CampusFlow kullanıcılarıyla henüz görüşme veya kullanılabilirlik çalışması yapılmadı; bu nedenle gerçek talep ve elde tutma oranı ölçülmüş kabul edilmemelidir.

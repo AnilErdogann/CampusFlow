@@ -27,6 +27,8 @@ A strong YBS portfolio project should connect **business needs** with **informat
 - Assignment/task management
 - Priority, due dates and status tracking
 - A short, deadline-aware list of the next tasks, with quick progress actions
+- Encrypted offline access to courses, tasks, timetable, study routine, attendance and notes after a successful online login on that device
+- Offline core edits are queued locally and synchronized after reconnecting
 - Dashboard KPIs
 - Automatic API documentation via OpenAPI/Swagger
 - SQLite for zero-config local development
@@ -36,6 +38,12 @@ A strong YBS portfolio project should connect **business needs** with **informat
 - Ruff linting
 
 ## Architecture
+
+### Offline use
+
+After the first successful online login, CampusFlow saves an encrypted copy of the core academic workspace in that browser on that device. On a later connection loss, enter the same email and password on the sign-in screen to unlock it. Courses, tasks, grades, timetable, attendance, focus records and saved notes remain usable; edits wait locally and sync when the account can authenticate online again.
+
+AI requests, direct messages, PDF upload/processing, and live account features require an internet connection. Offline storage requires a secure browser context (HTTPS or `localhost`) and the app shell must have been loaded once while connected. Clearing browser site data removes the device copy; unsynchronized edits should be synced before changing devices or clearing storage.
 
 ```text
 Client / Frontend

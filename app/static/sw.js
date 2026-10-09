@@ -1,14 +1,16 @@
-const CACHE_NAME = 'campusflow-shell-v16';
+const CACHE_NAME = 'campusflow-shell-v17';
 const APP_SHELL = [
   '/',
   '/download',
   '/static/styles.css?v=7',
+  '/static/offline.css?v=1',
   '/static/schedule.css?v=3',
   '/static/campus.css?v=3',
   '/static/settings.css?v=1',
   '/static/pwa.css?v=1',
   '/static/download.css?v=1',
-  '/static/app.js?v=22',
+  '/static/offline.js?v=1',
+  '/static/app.js?v=23',
   '/static/routine.css?v=1',
   '/static/planning.css?v=1',
   '/static/pdf-reader.css?v=5',

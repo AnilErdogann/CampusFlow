@@ -1,4 +1,11 @@
 let token = localStorage.getItem('campusflow_token');
+let offlineMode = false;
+let offlineSetupIssue = '';
+let syncInProgress = false;
+let dashboardLoaded = false;
+let routineLoaded = false;
+let notesLoaded = false;
+const OFFLINE_EMAIL_KEY = 'campusflow_offline_email';
 let authMode = 'login';
 let courses = [];
 let tasks = [];
@@ -45,21 +52,201 @@ const priorityNames = { 1: 'Düşük', 2: 'Az öncelikli', 3: 'Normal', 4: 'Önc
 const statusNames = { todo: 'Yapılacak', in_progress: 'Devam ediyor', done: 'Tamamlandı' };
 const $ = id => document.getElementById(id);
 
-async function api(path, options = {}) {
+async function requestOnlineApi(path, options = {}) {
   const isFormData = options.body instanceof FormData;
   const headers = { ...(options.body && !isFormData ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
   let response;
   try { response = await fetch(path, { ...options, headers }); }
-  catch { throw new Error('Sunucuya ulaşılamadı. Uygulamanın çalıştığını kontrol edip yeniden dene.'); }
+  catch {
+    const error = new Error('Sunucu bağlantısı kurulamadı. Bu istek çevrimiçi kullanım gerektiriyor.');
+    error.network = true;
+    throw error;
+  }
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     const detail = data.detail;
     const error = new Error(Array.isArray(detail) ? detail.map(item => item.msg).join(', ') : detail || 'İşlem başarısız.');
     error.status = response.status;
+    if ([502, 503, 504].includes(response.status)) error.network = true;
     throw error;
   }
   return response.status === 204 ? null : response.json();
+}
+
+async function api(path, options = {}) {
+  const offline = window.CampusFlowOffline;
+  const authRequest = path === '/api/auth/login' || path === '/api/auth/register';
+  const localPreferred = !authRequest && (offlineMode || navigator.onLine === false);
+  if (localPreferred && offline?.ready) {
+    try {
+      const result = await offline.api(path, options);
+      updateConnectionBanner();
+      return result;
+    }
+    catch (error) {
+      if (!error.requiresInternet || navigator.onLine === false) throw error;
+    }
+  }
+  if (navigator.onLine === false && authRequest) {
+    const error = new Error('Sunucuya ulaşılamıyor; kayıtlı hesabını bu cihazda çevrimdışı açmayı deneyebilirsin.');
+    error.network = true;
+    throw error;
+  }
+  if (navigator.onLine === false && offline?.ready) {
+    const result = await offline.api(path, options);
+    updateConnectionBanner();
+    return result;
+  }
+  if (navigator.onLine === false) throw new Error('Bu özellik internet bağlantısı gerektiriyor. Bağlantı geldiğinde yeniden dene.');
+
+  try { return await requestOnlineApi(path, options); }
+  catch (error) {
+    if (!error.network) throw error;
+    if (authRequest) throw error;
+    if (offline?.ready) {
+      activateOfflineMode();
+      updateConnectionBanner();
+      try {
+        const result = await offline.api(path, options);
+        updateConnectionBanner();
+        return result;
+      }
+      catch (localError) {
+        if (localError.requiresInternet) throw localError;
+        throw error;
+      }
+    }
+    if ($('app') && !$('app').hidden) promptOfflineLogin();
+    throw new Error('Bağlantı kesildi. Bu cihazdaki kayıtlı hesabı açmak için e-posta ve şifreni gir.');
+  }
+}
+
+function activateOfflineMode() {
+  offlineMode = true;
+  if (realtimeReconnectTimer) clearTimeout(realtimeReconnectTimer);
+  if (realtimeHeartbeatTimer) clearInterval(realtimeHeartbeatTimer);
+  realtimeReconnectTimer = null;
+  realtimeHeartbeatTimer = null;
+  if (currentCall) finishLocalCall();
+  const socket = realtimeSocket;
+  realtimeSocket = null;
+  socket?.close();
+}
+
+function updateConnectionBanner(message = '') {
+  const banner = $('connectionBanner');
+  if (!banner) return;
+  const pending = window.CampusFlowOffline?.pendingCount || 0;
+  const isOffline = navigator.onLine === false || (offlineMode && pending === 0);
+  const notice = message || (isOffline
+    ? `Çevrimdışısın. Ders, görev, program, çalışma kaydı ve notların bu cihazdaki şifreli kopyadan kullanılabilir.${pending ? ` ${pending} değişiklik eşitlenmeyi bekliyor.` : ''}`
+    : pending
+      ? `${pending} değişiklik bu cihazda bekliyor; bağlantı gelince eşitle.`
+      : offlineSetupIssue);
+  banner.hidden = !notice;
+  banner.classList.toggle('is-error', Boolean(isOffline || offlineSetupIssue || message));
+  banner.classList.toggle('is-good', !isOffline && !pending && !offlineSetupIssue && Boolean(notice));
+  $('connectionMessage').textContent = notice;
+  $('syncOfflineData').hidden = !pending && !isOffline;
+  $('syncOfflineData').disabled = navigator.onLine === false || !localStorage.getItem('campusflow_token');
+}
+
+function promptOfflineLogin(message = '') {
+  token = null;
+  currentUserId = null;
+  if (focusTimerInterval) clearInterval(focusTimerInterval);
+  focusTimerInterval = null;
+  focusTimerState = null;
+  if (realtimeReconnectTimer) clearTimeout(realtimeReconnectTimer);
+  if (realtimeHeartbeatTimer) clearInterval(realtimeHeartbeatTimer);
+  if (currentCall) finishLocalCall();
+  realtimeSocket?.close();
+  realtimeSocket = null;
+  $('userArea').replaceChildren();
+  $('app').hidden = true;
+  $('assistantLauncher').hidden = true;
+  $('assistantPanel').hidden = true;
+  $('auth').hidden = false;
+  resetLoadedWorkspace();
+  $('email').value ||= localStorage.getItem(OFFLINE_EMAIL_KEY) || '';
+  setAuthMode('login');
+  $('authMsg').textContent = message || 'İnternet bağlantısı yok. Bu cihazda daha önce giriş yaptıysan e-posta ve şifrenle çevrimdışı açabilirsin.';
+}
+
+function resetLoadedWorkspace() {
+  courses = [];
+  tasks = [];
+  scheduleEntries = [];
+  scheduleDraft = [];
+  routineOverview = null;
+  studyNotes = [];
+  dashboardLoaded = false;
+  routineLoaded = false;
+  notesLoaded = false;
+}
+
+async function syncOfflineData() {
+  const offline = window.CampusFlowOffline;
+  if (navigator.onLine === false) {
+    updateConnectionBanner('Eşitlemek için internet bağlantısı gerekiyor. Çevrimdışı değişikliklerin bu cihazda korunuyor.');
+    return;
+  }
+  const savedToken = localStorage.getItem('campusflow_token');
+  if (!savedToken || !offline?.ready) {
+    updateConnectionBanner('Eşitlemek için internet açıkken hesabına yeniden giriş yap. Bu cihazdaki kayıtların korunuyor.');
+    return;
+  }
+  if (syncInProgress) return;
+  syncInProgress = true;
+  token = savedToken;
+  try {
+    await requestOnlineApi('/api/auth/me');
+    const result = await offline.syncPending(token);
+    offlineMode = false;
+    offlineSetupIssue = '';
+    updateConnectionBanner(result.synced ? `${result.synced} değişiklik eşitlendi.` : 'Verilerin güncel.');
+    await loadDashboard();
+    await loadRoutine();
+    await loadNotes();
+    connectRealtime();
+    checkAdminStatus();
+    loadContacts();
+    setTimeout(() => updateConnectionBanner(), 3500);
+  } catch (error) {
+    activateOfflineMode();
+    const message = [401, 403].includes(error.status)
+      ? 'Bu cihazdaki değişiklikleri eşitlemek için internet açıkken hesabına yeniden giriş yap. Kayıtların bu cihazda korunuyor.'
+      : error.message || 'Eşitleme tamamlanamadı. Kayıtların bu cihazda korunuyor.';
+    if ([401, 403].includes(error.status)) {
+      token = null;
+      localStorage.removeItem('campusflow_token');
+    }
+    updateConnectionBanner(message);
+  } finally { syncInProgress = false; }
+}
+
+async function saveOfflineSnapshot(extra = {}) {
+  const offline = window.CampusFlowOffline;
+  if (!offline?.ready) return;
+  try {
+    const snapshot = { user: offline.user };
+    if (dashboardLoaded) Object.assign(snapshot, {
+      courses: courses.map(course => ({ ...course, grades: course.grades || [] })),
+      tasks: [...tasks],
+      schedule: [...scheduleEntries],
+    });
+    if (routineLoaded) snapshot.routine = routineOverview;
+    if (notesLoaded) snapshot.notes = [...studyNotes];
+    offline.setSnapshot({ ...snapshot, ...extra });
+    await offline.persist().catch(error => {
+      offlineSetupIssue = `Çevrimdışı kopya güncellenemedi: ${error.message}`;
+      updateConnectionBanner();
+    });
+  } catch (error) {
+    offlineSetupIssue = `Çevrimdışı kopya güncellenemedi: ${error.message}`;
+    updateConnectionBanner();
+  }
 }
 
 function authErrorMessage(error, registering, accountCreated) {
@@ -132,7 +319,9 @@ function setAuthMode(mode) {
   authMode = mode;
   const registering = mode === 'register';
   $('authTitle').textContent = registering ? 'Yeni hesap oluştur' : 'Hoş geldin 👋';
-  $('authHint').textContent = registering ? 'Derslerini, notlarını ve teslim tarihlerini tek yerde takip et.' : 'Derslerini, notlarını ve teslim tarihlerini tek yerde takip et.';
+  $('authHint').textContent = registering
+    ? 'Derslerini, notlarını ve teslim tarihlerini tek yerde takip et.'
+    : 'Derslerini, notlarını ve teslim tarihlerini tek yerde takip et. Bu cihazda bir kez giriş yaptıktan sonra temel planını çevrimdışı da açabilirsin.';
   $('nameLabel').hidden = !registering;
   $('name').required = registering;
   $('password').autocomplete = registering ? 'new-password' : 'current-password';
@@ -155,9 +344,12 @@ function setLoggedIn(user) {
   $('userArea').innerHTML = `<span class="welcome">${escapeHtml(user.full_name)}</span><button class="secondary" id="logout">Çıkış yap</button>`;
   restoreFocusTimer();
   $('logout').onclick = logout;
-  connectRealtime();
-  checkAdminStatus();
-  loadContacts();
+  updateConnectionBanner();
+  if (!offlineMode) {
+    connectRealtime();
+    checkAdminStatus();
+    loadContacts();
+  }
 }
 
 function logout() {
@@ -165,7 +357,10 @@ function logout() {
   focusTimerInterval = null;
   focusTimerState = null;
   token = null;
+  offlineMode = false;
+  window.CampusFlowOffline?.lock();
   currentUserId = null;
+  resetLoadedWorkspace();
   activeConversationEmail = '';
   conversationSignature = '';
   contactUnreadCounts.clear();
@@ -190,10 +385,17 @@ function logout() {
   $('auth').hidden = false;
   $('loginForm').reset();
   setAuthMode('login');
+  updateConnectionBanner();
 }
 
 function setPage(pageId) {
   if (pageId === 'adminPage' && $('adminNav').hidden) return;
+  const internetPages = new Set(['studyPage', 'messagesPage', 'aiSettingsPage', 'adminPage']);
+  if (internetPages.has(pageId) && navigator.onLine === false) {
+    const pageNames = { studyPage: 'Ders materyalleri ve PDF işleme', messagesPage: 'Mesajlaşma', aiSettingsPage: 'AI ayarları', adminPage: 'Yönetici paneli' };
+    updateConnectionBanner(`${pageNames[pageId]} internet bağlantısı gerektiriyor. Diğer bölümler çevrimdışı kullanılabilir.`);
+    return;
+  }
   activePageId = pageId;
   document.querySelectorAll('.workspace-page').forEach(page => { page.hidden = page.id !== pageId; });
   document.querySelectorAll('.nav-tab').forEach(button => button.classList.toggle('active', button.dataset.page === pageId));
@@ -208,7 +410,7 @@ function setPage(pageId) {
 }
 
 function connectRealtime() {
-  if (!token || (realtimeSocket && [WebSocket.CONNECTING, WebSocket.OPEN].includes(realtimeSocket.readyState))) return;
+  if (!token || offlineMode || navigator.onLine === false || (realtimeSocket && [WebSocket.CONNECTING, WebSocket.OPEN].includes(realtimeSocket.readyState))) return;
   if (realtimeReconnectTimer) clearTimeout(realtimeReconnectTimer);
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const socket = new WebSocket(`${protocol}//${location.host}/api/realtime`);
@@ -225,7 +427,7 @@ function connectRealtime() {
     if (realtimeHeartbeatTimer) clearInterval(realtimeHeartbeatTimer);
     realtimeHeartbeatTimer = null;
     if (currentCall) finishLocalCall();
-    if (token) realtimeReconnectTimer = setTimeout(connectRealtime, 2000);
+    if (token && !offlineMode && navigator.onLine !== false) realtimeReconnectTimer = setTimeout(connectRealtime, 2000);
   };
 }
 
@@ -605,11 +807,13 @@ function populateRoutineCourseSelects() {
 async function loadRoutine() {
   try {
     routineOverview = await api('/api/routine/overview');
+    routineLoaded = true;
     populateRoutineCourseSelects();
     $('weeklyGoalInput').value = routineOverview.weekly_goal_minutes;
     if (!$('attendanceDate').value) $('attendanceDate').value = localDateString();
     renderRoutine();
     renderFocusTimer();
+    await saveOfflineSnapshot({ routine: routineOverview });
   } catch (error) {
     $('attendanceCourseSummary').innerHTML = `<div class="routine-empty routine-message-error">${escapeHtml(error.message)}</div>`;
   }
@@ -863,7 +1067,7 @@ function speakDocument(documentId, longVersion) {
 }
 
 async function loadNotes() {
-  try { studyNotes = await api('/api/study/notes'); renderNotes(); }
+  try { studyNotes = await api('/api/study/notes'); notesLoaded = true; renderNotes(); await saveOfflineSnapshot({ notes: [...studyNotes] }); }
   catch (error) { $('notesList').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`; }
 }
 
@@ -1524,9 +1728,11 @@ function renderCourses() {
     try {
       const result = await api(`/api/courses/${courseId}/note`, { method: 'PUT', body: JSON.stringify({ course_note: textarea.value }) });
       course.course_note = result.course_note;
+      for (const entry of scheduleEntries) if (entry.course_id === courseId) entry.course_note = result.course_note;
       form.closest('details').querySelector('summary span').textContent = result.course_note ? 'Not var' : 'Not ekle';
       status.textContent = '✓ Ders notun kaydedildi.';
       renderSchedule();
+      await saveOfflineSnapshot();
     } catch (error) {
       status.textContent = error.message;
     } finally {
@@ -1585,6 +1791,7 @@ async function loadDashboard() {
   courses = courseDetails;
   tasks = taskRows;
   scheduleEntries = meetingRows;
+  dashboardLoaded = true;
   const openCount = tasks.filter(task => task.status !== 'done').length;
   $('courses').textContent = dashboard.total_courses;
   $('tasks').textContent = openCount;
@@ -1598,6 +1805,7 @@ async function loadDashboard() {
   renderFocus();
   renderNextTasks();
   $('taskForm').elements.course_id.innerHTML = '<option value="">Derse bağlama</option>' + courses.map(course => `<option value="${course.id}">${escapeHtml(course.code)} · ${escapeHtml(course.name)}</option>`).join('');
+  await saveOfflineSnapshot();
 }
 
 function localDateTime(value) {
@@ -1781,6 +1989,9 @@ async function applyScheduleDraft() {
 }
 
 async function startApp() {
+  const rememberedEmail = localStorage.getItem(OFFLINE_EMAIL_KEY) || '';
+  if (rememberedEmail) $('email').value = rememberedEmail;
+  if (!token) return;
   try {
     const user = await api('/api/auth/me');
     setLoggedIn(user);
@@ -1790,21 +2001,36 @@ async function startApp() {
       token = null;
       localStorage.removeItem('campusflow_token');
     }
-    if (token) {
-      $('auth').hidden = true;
-      $('app').hidden = false;
-      $('courseList').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
-      $('taskList').innerHTML = '<div class="empty">Sunucuya erişilemiyor. Uygulama çalışınca sayfayı yenile.</div>';
+    promptOfflineLogin(error.network ? '' : 'Oturum açılamadı. İnternet bağlantısıyla yeniden giriş yapabilir veya kayıtlı çevrimdışı hesabını açabilirsin.');
+    if (error.network && rememberedEmail && await window.CampusFlowOffline.hasAccount(rememberedEmail).catch(() => false)) {
+      $('authMsg').textContent = 'Bu cihazda şifreli bir kopya var. E-posta ve şifrenle çevrimdışı giriş yapabilirsin.';
+    } else if (!error.network) {
+      $('authMsg').textContent = error.message;
     }
   }
 }
 
 $('authSwitch').onclick = () => setAuthMode(authMode === 'login' ? 'register' : 'login');
+$('syncOfflineData').onclick = syncOfflineData;
+window.addEventListener('offline', () => {
+  if (window.CampusFlowOffline?.ready) {
+    activateOfflineMode();
+    if (['studyPage', 'messagesPage', 'aiSettingsPage', 'adminPage'].includes(activePageId)) setPage('homePage');
+    updateConnectionBanner();
+  } else if ($('app') && !$('app').hidden) {
+    promptOfflineLogin();
+  }
+});
+window.addEventListener('online', () => {
+  if (window.CampusFlowOffline?.ready) syncOfflineData();
+  else updateConnectionBanner();
+});
 $('loginForm').onsubmit = async event => {
   event.preventDefault();
   $('authMsg').textContent = '';
   const email = $('email').value.trim();
   const password = $('password').value;
+  localStorage.setItem(OFFLINE_EMAIL_KEY, email);
   const registering = authMode === 'register';
   const submitButton = $('authSubmit');
   let accountCreated = false;
@@ -1818,13 +2044,51 @@ $('loginForm').onsubmit = async event => {
     token = result.access_token;
     localStorage.setItem('campusflow_token', token);
     const user = await api('/api/auth/me');
+    offlineMode = false;
+    offlineSetupIssue = '';
+    let syncIssue = '';
+    try {
+      const prepared = await window.CampusFlowOffline.prepareOnline(email, password, user);
+      if (prepared.pending) {
+        try { await window.CampusFlowOffline.syncPending(token); }
+        catch (error) { offlineMode = true; syncIssue = error.message; }
+      }
+    } catch (error) {
+      offlineSetupIssue = error.message;
+    }
     setLoggedIn(user);
     await loadDashboard();
+    await loadRoutine();
+    await loadNotes();
+    if (syncIssue) updateConnectionBanner(syncIssue);
+    else updateConnectionBanner();
   } catch (error) {
-    token = null;
-    localStorage.removeItem('campusflow_token');
+    let displayError = error;
+    if (!registering && error.network && window.CampusFlowOffline) {
+      try {
+        const user = await window.CampusFlowOffline.unlockOffline(email, password);
+        offlineMode = true;
+        offlineSetupIssue = '';
+        token = null;
+        setLoggedIn(user);
+        await loadDashboard();
+        await loadRoutine();
+        await loadNotes();
+        updateConnectionBanner();
+        $('authMsg').textContent = '';
+        return;
+      } catch (offlineError) {
+        displayError = offlineError;
+      }
+    }
+    if (!error.network) {
+      token = null;
+      localStorage.removeItem('campusflow_token');
+    }
     $('authMsg').className = '';
-    $('authMsg').textContent = authErrorMessage(error, registering, accountCreated);
+    $('authMsg').textContent = registering && error.network
+      ? 'Yeni hesap oluşturmak için internet bağlantısı gerekiyor.'
+      : displayError === error ? authErrorMessage(error, registering, accountCreated) : displayError.message;
   } finally {
     submitButton.disabled = false;
   }

@@ -1,0 +1,5 @@
+.connection-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:12px 0;padding:12px 15px;border:1px solid #f0dba9;border-radius:12px;background:#fff9e9;color:#66552e;font-size:12px;line-height:1.5}
+.connection-banner button{flex:none}
+.connection-banner.is-error{border-color:#f0c7ca;background:#fff4f4;color:#8f333d}
+.connection-banner.is-good{border-color:#cce9dc;background:#f1fbf6;color:#27694f}
+@media(max-width:620px){.connection-banner{align-items:flex-start;flex-direction:column}.connection-banner button{width:100%}}

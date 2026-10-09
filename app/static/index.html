@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/static/pdf-reader.css?v=5">
   <link rel="stylesheet" href="/static/routine.css?v=1">
   <link rel="stylesheet" href="/static/planning.css?v=1">
+  <link rel="stylesheet" href="/static/offline.css?v=1">
 </head>
 <body>
   <main class="shell">
@@ -31,7 +32,7 @@
     </header>
 
     <section id="auth" class="card auth-grid">
-      <div><span class="eyebrow">DÖNEMİN KONTROLÜ SENDE</span><h2 id="authTitle">Hoş geldin 👋</h2><p id="authHint">Derslerini, notlarını ve teslim tarihlerini tek yerde takip et.</p></div>
+      <div><span class="eyebrow">DÖNEMİN KONTROLÜ SENDE</span><h2 id="authTitle">Hoş geldin 👋</h2><p id="authHint">Derslerini, notlarını ve teslim tarihlerini tek yerde takip et. Bu cihazda bir kez giriş yaptıktan sonra temel planını çevrimdışı da açabilirsin.</p></div>
       <form id="loginForm">
         <label id="nameLabel" hidden>Ad Soyad<input id="name" type="text" placeholder="Ad Soyad" minlength="2" maxlength="120"></label>
         <label>E-posta<input id="email" type="email" placeholder="ornek@universite.edu.tr" autocomplete="email" required></label>
@@ -52,6 +53,10 @@
         <button type="button" class="nav-tab" data-page="adminPage" id="adminNav" hidden>Aktif kullanıcılar</button>
         <button type="button" class="nav-tab" data-page="aiSettingsPage">AI ayarları</button>
       </nav>
+      <aside id="connectionBanner" class="connection-banner" role="status" hidden>
+        <span id="connectionMessage"></span>
+        <button type="button" id="syncOfflineData" class="secondary small-button">Şimdi eşitle</button>
+      </aside>
       <section id="routinePage" class="workspace-page" hidden>
         <div class="page-heading"><div><span class="eyebrow">KÜÇÜK ADIMLAR, GÖRÜNÜR İLERLEME</span><h2>Çalışma düzenim</h2><p>Odak oturumlarını, haftalık hedefini ve ders devamını tek ekrandan takip et.</p></div><button id="refreshRoutine" class="secondary" type="button">Yenile</button></div>
         <div class="routine-stats">
@@ -308,6 +313,7 @@
     </form>
     <div id="pdfReaderStage" class="pdf-reader-stage" hidden><div id="pdfPageList" class="pdf-page-list"></div></div>
   </dialog>
-  <script src="/static/app.js?v=22"></script>
+  <script src="/static/offline.js?v=1"></script>
+  <script src="/static/app.js?v=23"></script>
 </body>
 </html>
