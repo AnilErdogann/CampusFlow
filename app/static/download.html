@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f4f7fb">
+  <title>CampusFlow'u indir</title>
+  <link rel="stylesheet" href="/static/download.css?v=1">
+  <link rel="stylesheet" href="/static/download-status.css?v=1">
+</head>
+<body>
+  <main class="download-shell">
+    <a class="download-brand" href="/" aria-label="CampusFlow ana sayfa"><span class="download-mark">C</span><span>CampusFlow</span></a>
+    <section class="download-hero">
+      <span class="download-eyebrow">DERSLERİN VE PLANIN TEK YERDE</span>
+      <h1>CampusFlow'u cihazına ekle</h1>
+      <p>Dönem planını, görevlerini, ders notlarını ve arkadaşlarınla mesajlarını her gün kullandığın cihazdan takip et.</p>
+      <a class="download-button" href="/downloads/CampusFlow-Setup.exe" hidden>Windows için indir <span aria-hidden="true">↓</span></a>
+      <p class="download-unavailable" id="downloadUnavailable" hidden>Windows kurulum dosyası şu anda indirilmeye hazır değil.</p>
+      <small class="download-meta">Windows 10/11 · Kurulumdan sonra Başlat menüsünden CampusFlow'u aç</small>
+    </section>
+    <section class="install-grid" aria-label="Telefon kurulumu">
+      <article class="install-card">
+        <span class="install-icon" aria-hidden="true">◈</span>
+        <h2>Android</h2>
+        <p>Bu sayfayı Chrome'da aç. Menüden <strong>Uygulamayı yükle</strong> veya <strong>Ana ekrana ekle</strong> seçeneğine dokun.</p>
+      </article>
+      <article class="install-card">
+        <span class="install-icon" aria-hidden="true">◉</span>
+        <h2>iPhone</h2>
+        <p>Bu sayfayı Safari'de aç. <strong>Paylaş → Ana Ekrana Ekle</strong> yolunu izleyip <strong>Web Uygulaması Olarak Aç</strong> seçeneğini etkinleştir.</p>
+      </article>
+    </section>
+    <p class="download-note">Telefon kurulumu için CampusFlow'un HTTPS kullanan bir adreste yayınlanması gerekir. Android ve iPhone'da kurulum web uygulaması olarak yapılır; bu sayfadaki .exe yalnızca Windows içindir.</p>
+    <a class="back-link" href="/">← CampusFlow'a dön</a>
+  </main>
+  <script>
+    fetch('/api/downloads/windows')
+      .then(response => response.ok ? response.json() : Promise.reject())
+      .then(status => {
+        document.querySelector('.download-button').hidden = !status.available;
+        document.getElementById('downloadUnavailable').hidden = status.available;
+      })
+      .catch(() => { document.getElementById('downloadUnavailable').hidden = false; });
+  </script>
+</body>
+</html>

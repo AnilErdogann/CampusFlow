@@ -1,0 +1,2 @@
+.message-unread{float:right;min-width:18px;margin-left:8px;padding:2px 6px;border-radius:999px;background:#4264ca;color:#fff;text-align:center;font-size:9px;line-height:1.4}
+@media (display-mode: standalone){body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}}

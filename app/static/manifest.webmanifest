@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "CampusFlow · Öğrenci Yaşam Paneli",
+  "short_name": "CampusFlow",
+  "description": "Derslerini, görevlerini, PDF notlarını ve çalışma mesajlarını tek yerde yönet.",
+  "lang": "tr-TR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f7fb",
+  "theme_color": "#f4f7fb",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

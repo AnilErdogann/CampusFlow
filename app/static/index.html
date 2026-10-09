@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f4f7fb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="CampusFlow">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <title>CampusFlow · Dönem planın</title>
+  <link rel="stylesheet" href="/static/styles.css?v=7">
+  <link rel="stylesheet" href="/static/schedule.css?v=3">
+  <link rel="stylesheet" href="/static/campus.css?v=3">
+  <link rel="stylesheet" href="/static/settings.css?v=1">
+  <link rel="stylesheet" href="/static/pwa.css?v=1">
+  <link rel="stylesheet" href="/static/download.css?v=1">
+  <link rel="stylesheet" href="/static/pdf-reader.css?v=5">
+  <link rel="stylesheet" href="/static/routine.css?v=1">
+  <link rel="stylesheet" href="/static/planning.css?v=1">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">C</span>
+        <div><span class="eyebrow">ÖĞRENCİ YAŞAM PANELİ</span><h1>CampusFlow</h1><p>Dönemini planla, hedeflerini takip et.</p></div>
+      </div>
+      <div id="userArea"></div>
+    </header>
+
+    <section id="auth" class="card auth-grid">
+      <div><span class="eyebrow">DÖNEMİN KONTROLÜ SENDE</span><h2 id="authTitle">Hoş geldin 👋</h2><p id="authHint">Derslerini, notlarını ve teslim tarihlerini tek yerde takip et.</p></div>
+      <form id="loginForm">
+        <label id="nameLabel" hidden>Ad Soyad<input id="name" type="text" placeholder="Ad Soyad" minlength="2" maxlength="120"></label>
+        <label>E-posta<input id="email" type="email" placeholder="ornek@universite.edu.tr" autocomplete="email" required></label>
+        <label>Şifre<input id="password" type="password" placeholder="En az 8 karakter" minlength="8" maxlength="72" autocomplete="current-password" required></label>
+        <button id="authSubmit">Giriş yap</button>
+        <button type="button" class="secondary" id="authSwitch">Yeni hesap oluştur</button>
+        <small id="authMsg" aria-live="polite"></small>
+      </form>
+    </section>
+
+    <section id="app" hidden>
+      <nav class="main-nav" aria-label="Uygulama bölümleri">
+        <button type="button" class="nav-tab active" data-page="homePage">Dönemim</button>
+        <button type="button" class="nav-tab" data-page="routinePage">Çalışma düzenim</button>
+        <button type="button" class="nav-tab" data-page="studyPage">Ders materyalleri</button>
+        <button type="button" class="nav-tab" data-page="notesPage">AI notlarım</button>
+        <button type="button" class="nav-tab" data-page="messagesPage">Mesajlar</button>
+        <button type="button" class="nav-tab" data-page="adminPage" id="adminNav" hidden>Aktif kullanıcılar</button>
+        <button type="button" class="nav-tab" data-page="aiSettingsPage">AI ayarları</button>
+      </nav>
+      <section id="routinePage" class="workspace-page" hidden>
+        <div class="page-heading"><div><span class="eyebrow">KÜÇÜK ADIMLAR, GÖRÜNÜR İLERLEME</span><h2>Çalışma düzenim</h2><p>Odak oturumlarını, haftalık hedefini ve ders devamını tek ekrandan takip et.</p></div><button id="refreshRoutine" class="secondary" type="button">Yenile</button></div>
+        <div class="routine-stats">
+          <article class="routine-stat"><span>Bu hafta</span><strong id="routineWeekMinutes">0 dk</strong><small id="routineGoalHint">Haftalık hedefin</small></article>
+          <article class="routine-stat"><span>Bugün</span><strong id="routineTodayMinutes">0 dk</strong><small>Kaydedilen çalışma</small></article>
+          <article class="routine-stat"><span>Çalışma serisi</span><strong id="routineStreak">0 gün</strong><small>Arka arkaya aktif gün</small></article>
+          <article class="routine-stat"><span>Bu haftaki hedef</span><strong id="routineGoalPercent">0%</strong><small id="routineRemaining">Başlamak için hazır</small></article>
+        </div>
+        <div class="routine-grid">
+          <section class="card routine-card timer-card">
+            <div class="section-title"><div><span class="eyebrow">ODAK ZAMANI</span><h2>Çalışma sayacı</h2><p>Sayfa yenilense bile sayaç kaldığı yerden devam eder.</p></div><span class="routine-icon">◷</span></div>
+            <label>Dersle eşleştir<select id="focusCourse"><option value="">Serbest çalışma</option></select></label>
+            <div class="timer-presets" aria-label="Sayaç süresi"><button type="button" class="timer-preset selected" data-focus-minutes="25">25 dk</button><button type="button" class="timer-preset" data-focus-minutes="50">50 dk</button><button type="button" class="timer-preset" data-focus-minutes="90">90 dk</button></div>
+            <div class="timer-face" id="focusTimerDisplay" aria-live="polite">25:00</div>
+            <div class="timer-track"><span id="focusTimerProgress"></span></div>
+            <p id="focusTimerStatus" class="timer-status">Bir ders seç veya serbest çalışmaya başla.</p>
+            <label>Oturum notu <input id="focusSessionNote" maxlength="300" placeholder="Örn. 3. bölümden 20 soru çözdüm"></label>
+            <div class="timer-actions"><button type="button" id="startFocusTimer">Başlat</button><button type="button" id="pauseFocusTimer" class="secondary" disabled>Duraklat</button><button type="button" id="finishFocusTimer" class="secondary" disabled>Bitir ve kaydet</button></div>
+          </section>
+          <section class="card routine-card progress-card">
+            <div class="section-title"><div><span class="eyebrow">HAFTALIK RİTİM</span><h2>Hedefin ve ilerlemen</h2><p>Hedefini programına göre ayarla; her çalışma oturumu grafiğe eklenir.</p></div></div>
+            <form id="weeklyGoalForm" class="goal-form"><label for="weeklyGoalInput">Haftalık çalışma hedefi (dakika)<input id="weeklyGoalInput" type="number" min="60" max="3000" step="30" value="300" required></label><button type="submit">Hedefi kaydet</button></form>
+            <div id="weeklyProgressBar" class="weekly-progress"><span></span></div><div id="weeklyProgressLabel" class="weekly-progress-label">0 / 300 dk</div>
+            <div id="weekChart" class="week-chart" aria-label="Haftanın günlerine göre çalışma süresi"></div>
+            <form id="quickSessionForm" class="quick-session-form"><strong>Çalışma süresini elle ekle</strong><div class="quick-session-fields"><label>Dakika<input id="quickSessionMinutes" type="number" min="1" max="180" value="30" required></label><label>Ders<select id="quickSessionCourse"><option value="">Serbest çalışma</option></select></label></div><label>Not (isteğe bağlı)<input id="quickSessionNote" maxlength="300" placeholder="Ne üzerinde çalıştın?"></label><button type="submit" class="secondary">Çalışma kaydı ekle</button></form>
+          </section>
+          <section class="card routine-card attendance-card">
+            <div class="section-title"><div><span class="eyebrow">DERS DEVAM TAKİBİ</span><h2>Yoklama kaydı</h2><p>Ders bazında katılımını ve izin verilen devamsızlık sınırını takip et.</p></div><span class="routine-icon">✓</span></div>
+            <form id="attendanceForm" class="attendance-form"><label>Ders<select id="attendanceCourse" required><option value="">Ders seç</option></select></label><div class="attendance-fields"><label>Tarih<input id="attendanceDate" type="date" required></label><label>Durum<select id="attendanceStatus"><option value="attended">Katıldım</option><option value="absent">Katılmadım</option><option value="excused">İzinli</option></select></label></div><label>Devamsızlık hakkı (ders başına)<input id="allowedAbsences" type="number" min="0" max="30" value="3" required></label><label>Not (isteğe bağlı)<input id="attendanceNote" maxlength="300" placeholder="Örn. sağlık raporu"></label><button type="submit">Yoklamayı kaydet</button><small id="attendanceStatusMessage" aria-live="polite"></small></form>
+            <div class="attendance-summary-heading"><strong>Derslere göre durum</strong><small>Hakkın dolmaya yaklaştığında uyarı görünür.</small></div><div id="attendanceCourseSummary" class="attendance-course-summary"></div>
+            <div class="attendance-history-heading"><strong>Son yoklamalar</strong><small>Aynı derste ve tarihte tekrar kaydetmek mevcut kaydı günceller.</small></div><div id="attendanceHistory" class="attendance-history"></div>
+          </section>
+          <section class="card routine-card session-history-card">
+            <div class="section-title"><div><span class="eyebrow">ÇALIŞMA GÜNLÜĞÜ</span><h2>Son oturumlar</h2><p>Kaydettiğin çalışmalar hesabında kalır ve haftalık hedefine eklenir.</p></div></div><div id="focusSessionHistory" class="focus-session-history"></div>
+          </section>
+        </div>
+      </section>
+      <div id="homePage" class="workspace-page">
+      <div class="page-heading"><div><span class="eyebrow" id="todayDate"></span><h2 id="welcomeTitle">Dönem özeti</h2><p>Bugünkü işlerini gör, ilerlemeni takip et.</p></div><button id="quickAddTask" class="primary-action">+ Görev ekle</button></div>
+      <div class="stats">
+        <article class="stat"><span>Dersler</span><strong id="courses">0</strong><small>Bu dönem</small></article>
+        <article class="stat"><span>Açık görevler</span><strong id="tasks">0</strong><small id="taskCountHint">Tamamlanan yok</small></article>
+        <article class="stat"><span>Tamamlanma</span><strong id="completion">0%</strong><small>Dönem görevleri</small></article>
+        <article class="stat"><span>Genel ortalama</span><strong id="average">—</strong><small>Not ağırlığına göre</small></article>
+        <article class="stat danger"><span>Geciken görev</span><strong id="overdue">0</strong><small>Henüz tamamlanmadı</small></article>
+      </div>
+
+      <section class="focus-card" aria-live="polite">
+        <div class="focus-icon" aria-hidden="true">↗</div>
+        <div class="focus-copy"><span class="eyebrow">SIRADAKİ ADIM</span><h2 id="focusTitle">Bugün için bir görev ekle</h2><p id="focusMeta">Planın burada görünür.</p></div>
+        <button id="focusAction" class="secondary">Planı aç</button>
+      </section>
+
+      <section class="card next-tasks-card" aria-labelledby="nextTasksTitle">
+        <div class="section-title">
+          <div><span class="eyebrow">GEREKÇELİ ÖNCELİK</span><h2 id="nextTasksTitle">Ardından yapacakların</h2><p>Yaklaşan teslim tarihi ve görev önceliğine göre sıralanır.</p></div>
+          <span id="nextTasksCount" class="next-tasks-count"></span>
+        </div>
+        <div id="nextTaskList" class="next-task-list" aria-live="polite"></div>
+      </section>
+
+      <section class="card schedule-card">
+        <div class="section-title"><div><span class="eyebrow">HAFTALIK TAKVİM</span><h2>Ders programın</h2><p>Saat, derslik, hoca ve ders notların.</p></div><button id="openScheduleImport">PDF / fotoğraf yükle</button></div>
+        <div id="weeklySchedule" class="week-grid"></div>
+      </section>
+
+      <div class="columns">
+        <section class="card panel-card">
+          <div class="section-title"><div><span class="eyebrow">DÖNEMİN</span><h2>Derslerin</h2></div><button id="addCourse">+ Ders ekle</button></div>
+          <div id="courseList" class="list"></div>
+        </section>
+        <section class="card panel-card">
+          <div class="section-title"><div><span class="eyebrow">YAPILACAKLAR</span><h2>Görevlerin</h2></div><button id="addTask">+ Görev</button></div>
+          <div class="filter-row"><label class="filter-label" for="taskFilter">Göster</label><select id="taskFilter"><option value="open">Açık görevler</option><option value="all">Tüm görevler</option><option value="overdue">Gecikenler</option><option value="done">Tamamlananlar</option></select><span id="visibleTaskCount" class="filter-count"></span></div>
+          <div id="taskList" class="list"></div>
+        </section>
+      </div>
+      <footer class="app-footer">Küçük adımlar, düzenli ilerleme. · CampusFlow</footer>
+      </div>
+
+      <section id="studyPage" class="workspace-page" hidden>
+        <div class="page-heading"><div><span class="eyebrow">KAYNAKLARIN TEK YERDE</span><h2>Ders materyalleri</h2><p>Okul sayfandan PDF indir, buraya ekle; özetini oku veya dinle.</p></div></div>
+        <section class="card resource-card">
+          <div class="section-title"><div><span class="eyebrow">OKULUN ÖĞRENME PORTALI</span><h2>e‑Suzem bağlantısı</h2><p>Okulunun kullandığı adresi ekle. Giriş bilgilerin okul sayfasında kalır.</p></div><span class="portal-mark" aria-hidden="true">↗</span></div>
+          <form id="portalForm" class="portal-form"><label for="portalUrl">Okul portal adresi<input id="portalUrl" type="url" placeholder="https://..." autocomplete="url"></label><button type="submit">Adresi kaydet</button><button type="button" class="secondary" id="openPortal">Okul sayfasını aç</button></form>
+          <small class="helper-text">Üniversiteler güvenlik nedeniyle sayfalarının uygulama içinde gömülmesini engelleyebilir. Bu yüzden portalı güvenli yeni sekmede açıyoruz. PDF’yi indirip aşağıdan CampusFlow’a ekleyebilirsin.</small>
+        </section>
+        <section class="card resource-card upload-resource-card">
+          <div class="section-title"><div><span class="eyebrow">PDF OKUYUCU</span><h2>PDF notu ekle</h2><p>Metin PDF’leri ve taranmış ders notları desteklenir. En fazla 20 MB / 200 sayfa.</p></div></div>
+          <form id="documentForm" class="document-upload-form">
+            <label>Not başlığı<input id="documentTitle" maxlength="180" placeholder="Örn. Veri tabanı yönetimi · 3. hafta"></label>
+            <label class="file-picker" for="studyPdf"><span class="file-icon" aria-hidden="true">↑</span><span><strong>PDF dosyası seç</strong><small>Dosya hesabında özel olarak saklanır.</small></span><input id="studyPdf" type="file" accept=".pdf,application/pdf" required></label>
+            <button id="uploadStudyPdf" type="submit">PDF’yi ekle</button>
+          </form>
+          <small id="documentStatus" class="schedule-status" aria-live="polite">PDF içeriği bu uygulamada işlenir.</small>
+        </section>
+        <section class="card resource-card">
+          <div class="section-title"><div><span class="eyebrow">KÜTÜPHANEN</span><h2>PDF’lerin ve özetlerin</h2></div><button type="button" class="secondary small-button" id="refreshDocuments">Yenile</button></div>
+          <div id="documentList" class="document-list"></div>
+        </section>
+      </section>
+
+      <section id="notesPage" class="workspace-page" hidden>
+        <div class="page-heading"><div><span class="eyebrow">KENDİ ÇALIŞMA ALANIN</span><h2>AI notlarım</h2><p>Asistana kaydettiğin önemli noktalar burada hesabına özel görünür.</p></div><button id="newNote" class="primary-action" type="button">+ Not ekle</button></div>
+        <div class="notes-intro card"><span class="notes-intro-icon">✦</span><div><strong>Bir şeyi unutmamak için asistana söyle.</strong><p>Sağ alttaki şeffaf CampusFlow düğmesinden not alabilir veya kendi PDF ve notlarında konu arayabilirsin.</p></div></div>
+        <div id="notesList" class="notes-grid"></div>
+      </section>
+
+      <section id="messagesPage" class="workspace-page" hidden>
+        <div class="page-heading"><div><span class="eyebrow">PROJE ARKADAŞLARINLA</span><h2>Mesajlar</h2><p>CampusFlow hesabı olan arkadaşına e-posta adresiyle yaz ve dosya gönder.</p></div></div>
+        <div class="messages-layout card">
+          <aside class="contact-panel"><div class="contact-heading"><strong>Sohbetlerin</strong><button class="secondary small-button" id="refreshContacts" type="button">Yenile</button></div><div id="contactList" class="contact-list"></div></aside>
+          <section class="conversation-panel">
+            <form id="openConversationForm" class="conversation-recipient"><label>Alıcının e-posta adresi<input id="recipientEmail" type="email" placeholder="arkadas@universite.edu.tr" required></label><button type="submit">Sohbeti aç</button></form>
+            <div id="conversationActions" class="conversation-actions" hidden><button type="button" class="secondary" id="audioCall">☎ Sesli ara</button><button type="button" class="secondary" id="videoCall">▣ Görüntülü ara</button></div>
+            <div id="conversationHint" class="conversation-hint">Sohbet başlatmak için CampusFlow hesabı olan birinin e-posta adresini yaz.</div>
+            <div id="conversationMessages" class="conversation-messages" aria-live="polite"></div>
+            <form id="messageForm" class="message-compose" hidden>
+              <label class="sr-only" for="messageBody">Mesajın</label><textarea id="messageBody" rows="2" maxlength="4000" placeholder="Mesajını yaz…"></textarea>
+              <div class="message-compose-bottom"><label class="attach-file" for="messageFile">＋ Dosya ekle<input id="messageFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.docx,.pptx,.xlsx,.webm,.m4a,.mp3,.ogg,.wav,.aac"></label><button type="button" class="secondary record-button" id="recordVoice">🎙 Ses kaydet</button><span id="attachmentName" class="attachment-name"></span><button id="sendMessage" type="submit">Gönder</button></div>
+              <audio id="voicePreview" class="voice-preview" controls hidden></audio>
+              <button type="button" class="secondary remove-voice" id="removeVoice" hidden>Kaydı kaldır</button>
+              <small id="recordingStatus">Enter ile gönder · Shift+Enter ile yeni satır · Dosya ve ses kaydı en fazla 12 MB</small>
+            </form>
+          </section>
+        </div>
+      </section>
+
+      <section id="adminPage" class="workspace-page" hidden>
+        <div class="page-heading"><div><span class="eyebrow">YÖNETİCİ GÖRÜNÜMÜ</span><h2>Şu an çevrimiçi</h2><p>Son bir dakikada bağlantısı yenilenmiş kullanıcılar ve açık oldukları uygulama bölümü.</p></div><button id="refreshActiveUsers" class="secondary" type="button">Yenile</button></div>
+        <div class="admin-presence-summary card"><span class="presence-pulse"></span><strong id="onlineCount">0 kişi çevrimiçi</strong><small>Liste otomatik olarak yenilenir.</small></div>
+        <div id="activeUserList" class="active-user-list"></div>
+      </section>
+
+      <section id="aiSettingsPage" class="workspace-page" hidden>
+        <div class="page-heading"><div><span class="eyebrow">GİZLİLİK VE KONTROL SENDE</span><h2>AI ve uygulama ayarları</h2><p>Yerel veya bulut modelini seç, yanıt biçimini ve veri paylaşımını belirle.</p></div></div>
+        <section class="card settings-card">
+          <div class="settings-intro"><span class="notes-intro-icon">✦</span><div><strong>Hangi yapay zekâyı kullanacağına sen karar ver.</strong><p>Yerel modda PDF/not içeriği bilgisayarında kalır. Bulut modunda materyal paylaşımı kapalı başlar ve sen açmadan içeriğin gönderilmez.</p></div></div>
+          <form id="aiSettingsForm" class="settings-form">
+            <label>AI sağlayıcısı<select id="aiProvider"><option value="local">Yerel AI · Ollama</option><option value="cloud">Bulut AI · OpenAI</option></select><small>Asistan, PDF özeti ve bağlantı testi bu seçime göre çalışır.</small></label>
+            <div id="localAIConfig" class="provider-config">
+              <div class="provider-config-heading"><div><strong>Yerel model</strong><small>İstekler bilgisayarında çalışan Ollama servisine gider.</small></div><a href="https://ollama.com/download/windows" target="_blank" rel="noopener noreferrer">Ollama’yı indir ↗</a></div>
+              <label>Model adı<input id="localAIModel" list="localModelList" maxlength="120" placeholder="qwen2.5:3b" required><datalist id="localModelList"></datalist><small>Az bellekle daha hızlı çalışması için varsayılan <code>qwen2.5:3b</code> modelidir. Daha güçlü bilgisayarlarda <code>qwen2.5:7b</code> veya daha yavaş <code>qwen2.5:14b</code> seçebilirsin.</small></label>
+              <div class="local-model-setup"><code>ollama pull qwen2.5:3b</code><button type="button" class="secondary small-button" id="copyModelCommand">Komutu kopyala</button><button type="button" class="secondary small-button" id="refreshLocalModels">Yerel modelleri yenile</button></div>
+            </div>
+            <div id="cloudAIConfig" class="provider-config" hidden>
+              <div class="provider-config-heading"><div><strong>Bulut modeli</strong><small>İnternet üzerinden OpenAI API’sine bağlanır; API kullanımı hesabına göre ücretlendirilebilir.</small></div><span class="cloud-indicator">İnternet gerekir</span></div>
+              <label>OpenAI model kimliği<input id="cloudAIModel" maxlength="120" placeholder="gpt-6-luna" required><small>API hesabında erişimin olan model kimliğini yaz. Önerilen model: <code>gpt-6-luna</code>.</small></label>
+              <label>API anahtarı<input id="cloudAPIKey" type="password" autocomplete="new-password" placeholder="Yeni anahtar gir veya kayıtlı anahtarı koru"><small id="cloudKeyStatus">Anahtar şifreli saklanır ve ekranda tekrar gösterilmez.</small><small><a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">OpenAI Platform’da API anahtarı oluştur ↗</a> · API kullanımı ücretli olabilir.</small></label>
+              <label class="settings-check"><input id="clearCloudAPIKey" type="checkbox"><span>Kayıtlı API anahtarını sil</span></label>
+              <label class="settings-check privacy-check"><input id="shareMaterialsCloud" type="checkbox"><span>PDF ve kişisel not içeriklerini bulut AI’ye göndermeme izin ver. Açık olduğunda PDF özetlemesi için belgenin metni, asistan sorusu için ilgili alıntılar OpenAI’ye gönderilir.</span></label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-row">
+              <label>Yanıt uzunluğu<select id="aiResponseLength"><option value="concise">Kısa ve doğrudan</option><option value="standard">Dengeli</option><option value="detailed">Ayrıntılı ve örnekli</option></select><small>PDF özeti ve asistan yanıtlarında kullanılır.</small></label>
+              <label>Yaratıcılık<select id="aiTemperature"><option value="0">Düşük · daha tutarlı</option><option value="0.25">Dengeli</option><option value="0.6">Yüksek · daha çeşitli</option><option value="0.9">Çok yüksek</option></select><small>Yerel model davranışını etkiler; bazı bulut modelleri bu ayarı yok sayabilir.</small></label>
+            </div>
+            <label class="settings-check"><input id="includeAISources" type="checkbox" checked><span>Asistan yanıtında kullandığı not veya PDF başlığını göstersin</span></label>
+            <div id="aiSettingsStatus" class="ai-status" aria-live="polite">AI sağlayıcı durumu yükleniyor…</div>
+            <div class="settings-actions"><button type="button" class="secondary" id="checkAIConnection">Bağlantıyı kontrol et</button><button type="button" class="secondary" id="testAI">Küçük bir yanıt dene</button><button type="submit">Ayarları kaydet</button></div>
+          </form>
+        </section>
+        <section class="card usage-card"><div><span class="eyebrow">BU AYKİ AI KULLANIMIN</span><h2>Kullanım özeti</h2><p>İstek metinlerinin kendisi kullanım istatistiği olarak kaydedilmez.</p></div><div id="aiUsageSummary" class="usage-summary">Henüz kullanım yok.</div></section>
+        <section class="card settings-card data-control-card"><div><span class="eyebrow">VERİLERİN</span><h2>Hesap verilerini dışa aktar</h2><p>Ders, görev, program ve AI notlarını indirerek uygulamadan çıkarsan da saklayabilirsin.</p></div><button id="exportAccountData" type="button" class="secondary">Verilerimi indir (JSON)</button><small id="exportStatus" aria-live="polite"></small></section>
+      </section>
+    </section>
+
+    <dialog id="courseDialog" class="dialog">
+      <form id="courseForm" class="form-grid">
+        <div><span class="eyebrow">DÖNEMİNİ DÜZENLE</span><h2>Yeni ders</h2><p>Ders bilgilerini gir, not hedefini dönem boyunca takip et.</p></div>
+        <label>Ders kodu<input name="code" placeholder="Örn. YBS101" minlength="2" maxlength="30" required></label>
+        <label>Ders adı<input name="name" placeholder="Örn. Yönetim Bilişim Sistemleri" minlength="2" maxlength="150" required></label>
+        <div class="form-pair"><label>Kredi<input name="credits" type="number" min="1" max="30" value="3" required></label><label>Hedef not<input name="target_grade" type="number" min="0" max="100" value="70" required></label></div>
+        <small class="formMsg" aria-live="polite"></small>
+        <div class="actions"><button type="button" class="secondary" data-close>Vazgeç</button><button type="submit">Dersi kaydet</button></div>
+      </form>
+    </dialog>
+    <dialog id="taskDialog" class="dialog">
+      <form id="taskForm" class="form-grid">
+        <div><span class="eyebrow">PLANINI GÜNCELLE</span><h2 id="taskDialogTitle">Yeni görev</h2><p>Ders seç, teslim tarihini belirle ve önceliğini ayarla.</p></div>
+        <label>Görev adı<input name="title" placeholder="Örn. Proje raporunu teslim et" minlength="2" maxlength="200" required></label>
+        <label>Açıklama<textarea name="description" rows="3" placeholder="İstersen kısa bir not ekle"></textarea></label>
+        <label>Ders<select name="course_id"><option value="">Derse bağlama</option></select></label>
+        <div class="form-pair"><label>Öncelik<select name="priority"><option value="1">1 · Düşük</option><option value="2">2 · Az öncelikli</option><option value="3" selected>3 · Normal</option><option value="4">4 · Öncelikli</option><option value="5">5 · Acil</option></select></label><label>Son tarih<input name="due_at" type="datetime-local"></label></div>
+        <small class="formMsg" aria-live="polite"></small>
+        <div class="actions"><button type="button" class="secondary" data-close>Vazgeç</button><button type="submit">Görevi kaydet</button></div>
+      </form>
+    </dialog>
+    <dialog id="gradeDialog" class="dialog">
+      <form id="gradeForm" class="form-grid">
+        <div><span class="eyebrow">NOT TAKİBİ</span><h2 id="gradeDialogTitle">Değerlendirme ekle</h2><p id="gradeCourseHint">Not ve dönem içindeki ağırlığını gir.</p></div>
+        <label>Değerlendirme adı<input name="name" placeholder="Örn. Ara sınav" minlength="1" maxlength="100" required></label>
+        <div class="form-pair"><label>Not (0–100)<input name="score" type="number" min="0" max="100" step="0.01" required></label><label>Ağırlık (%)<input name="weight" type="number" min="0.01" max="100" step="0.01" placeholder="Örn. 40" required></label></div>
+        <small class="formMsg" aria-live="polite"></small>
+        <div class="actions"><button type="button" class="secondary" data-close>Vazgeç</button><button id="gradeSaveButton" type="submit">Notu kaydet</button></div>
+      </form>
+    </dialog>
+    <dialog id="scheduleDialog" class="dialog schedule-dialog">
+      <div class="form-grid">
+        <div><span class="eyebrow">HIZLI PROGRAM AKTARIMI</span><h2>PDF veya fotoğraf yükle</h2><p>Ders programını oku, bulunan bilgileri kontrol et ve tek seferde takvimine ekle.</p></div>
+        <label>Bölüm / ders ara<input id="departmentSearch" type="search" placeholder="Örn. Yönetim Bilişim Sistemleri veya YBS"><small>Programda bölüm başlığı varsa onun derslerini bulur; istersen ders kodu veya adına göre de ara.</small></label>
+        <label class="file-picker" for="scheduleFile"><span class="file-icon" aria-hidden="true">↑</span><span><strong>Dosya seç</strong><small>PDF, JPG, PNG veya WebP · en fazla 15 MB</small></span><input id="scheduleFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"></label>
+        <div class="schedule-status" id="scheduleStatus" aria-live="polite">Dosyan yalnızca bu uygulamada işlenir.</div>
+        <button type="button" id="parseSchedule">Programı oku</button>
+        <section id="schedulePreview" hidden>
+          <div class="preview-heading"><div><strong id="previewSummary">Dersler bulundu</strong><small>Yalnızca işaretlediğin dersler programa eklenir. Saatleri ve hoca adlarını kontrol et.</small></div><div class="preview-actions"><button type="button" class="secondary small-button" id="selectAllCourses">Görünenleri seç</button><button type="button" class="secondary small-button" id="clearCourseSelection">Seçimi temizle</button><button type="button" class="secondary small-button" id="addScheduleRow">+ Ders ekle</button></div></div>
+          <div id="scheduleRows" class="schedule-draft-list"></div>
+          <details class="raw-text-details"><summary>Belgeden okunan metni gör</summary><pre id="rawScheduleText"></pre></details>
+        <small class="formMsg schedule-validation" id="scheduleValidation" aria-live="polite"></small>
+          <div class="actions"><button type="button" class="secondary" data-close>Vazgeç</button><button type="button" id="applySchedule" disabled>Programımı güncelle</button></div>
+        </section>
+      </div>
+    </dialog>
+    <footer class="auth-footer">CampusFlow · Akademik planlama ve performans takibi</footer>
+  </main>
+  <button type="button" id="assistantLauncher" class="assistant-launcher" aria-label="Kişisel çalışma asistanını aç" hidden><span>✦</span></button>
+  <aside id="assistantPanel" class="assistant-panel" aria-label="Kişisel çalışma asistanı" hidden>
+    <div class="assistant-panel-header"><div><span class="eyebrow">CAMPUSFLOW ASİSTAN</span><strong>Çalışma yardımcın</strong></div><button type="button" id="closeAssistant" class="assistant-close" aria-label="Kapat">×</button></div>
+    <p class="assistant-disclaimer">Sorularını yapay zekâ yanıtlar; ilgili PDF bölümlerini ve sayfalarını kaynak olarak gösterir.</p>
+    <form id="assistantForm" class="assistant-form"><label for="assistantQuestion">Çalışma yardımcısına sor</label><textarea id="assistantQuestion" rows="3" maxlength="1000" placeholder="Örn. Normalizasyon nedir? PDF’lerimden açıklayarak yanıtla." required></textarea><button id="askAssistant" type="submit">Yanıtla</button></form>
+    <div id="assistantAnswer" class="assistant-answer" aria-live="polite"></div>
+    <div id="assistantSources" class="assistant-sources" aria-label="Yanıtta kullanılan PDF sayfaları"></div>
+    <form id="assistantNoteForm" class="assistant-note-form" hidden><label>Bu yanıtı notlarına kaydet<input id="assistantNoteTitle" maxlength="180" placeholder="Not başlığı" required></label><button type="submit">AI notlarıma kaydet</button></form>
+    <div class="assistant-manual-note"><strong>Hızlı not al</strong><label for="quickNoteTitle">Başlık<input id="quickNoteTitle" maxlength="180" placeholder="Önemli konu"></label><label for="quickNoteBody">Not<textarea id="quickNoteBody" rows="3" maxlength="20000" placeholder="Hatırlamak istediğin bilgiyi yaz…"></textarea></label><button id="saveQuickNote" type="button">Notu kaydet</button></div>
+    <div id="assistantModeFooter" class="assistant-mode-footer">AI modu ayarlarda seçilir.</div>
+  </aside>
+  <dialog id="quickNoteDialog" class="dialog">
+    <form id="quickNoteForm" class="form-grid">
+      <div><span class="eyebrow">AI NOTLARIM</span><h2>Yeni not</h2><p>Önemli konu veya hatırlatıcı ekle.</p></div>
+      <label>Başlık<input name="title" maxlength="180" required></label><label>Not<textarea name="body" rows="5" maxlength="20000" required></textarea></label>
+      <small class="formMsg" aria-live="polite"></small><div class="actions"><button type="button" class="secondary" data-close>Vazgeç</button><button type="submit">Notu kaydet</button></div>
+    </form>
+  </dialog>
+  <dialog id="callDialog" class="call-dialog" aria-labelledby="callTitle">
+    <div class="call-dialog-heading"><div><span class="eyebrow">CAMPUSFLOW ARAMA</span><h2 id="callTitle">Arama</h2><p id="callStatus" aria-live="polite">Bağlanıyor…</p></div><button id="callClose" class="secondary" type="button" aria-label="Aramayı kapat">×</button></div>
+    <div id="callVideoStage" class="call-video-stage" hidden><video id="remoteVideo" autoplay playsinline></video><video id="localVideo" autoplay playsinline muted></video></div>
+    <audio id="remoteAudio" autoplay></audio>
+    <div id="incomingCallActions" class="call-actions" hidden><button type="button" id="acceptCall" class="call-accept">Yanıtla</button><button type="button" id="declineCall" class="call-decline">Reddet</button></div>
+    <div id="activeCallActions" class="call-actions" hidden><button type="button" id="toggleMicrophone" class="secondary">Mikrofonu kapat</button><button type="button" id="toggleCamera" class="secondary" hidden>Kamerayı kapat</button><button type="button" id="hangupCall" class="call-decline">Aramayı bitir</button></div>
+  </dialog>
+  <dialog id="pdfReaderDialog" class="pdf-reader-dialog" aria-labelledby="pdfReaderTitle">
+    <header class="pdf-reader-header">
+      <div><span class="eyebrow">PDF OKUYUCU</span><h2 id="pdfReaderTitle">Ders materyali</h2></div>
+      <div class="pdf-reader-actions">
+        <button id="pdfReaderDownload" class="secondary" type="button">PDF’yi indir</button>
+        <button id="closePdfReader" class="secondary" type="button">Kapat</button>
+      </div>
+    </header>
+    <p id="pdfReaderStatus" class="pdf-reader-status" aria-live="polite">PDF yükleniyor…</p>
+    <form id="pdfReaderToolbar" class="pdf-reader-toolbar" hidden>
+      <button id="pdfPreviousPage" class="secondary" type="button">← Önceki</button>
+      <label>Sayfa <input id="pdfPageNumber" type="number" min="1" value="1" required> / <span id="pdfPageCount">0</span></label>
+      <button id="pdfNextPage" class="secondary" type="button">Sonraki →</button>
+    </form>
+    <div id="pdfReaderStage" class="pdf-reader-stage" hidden><div id="pdfPageList" class="pdf-page-list"></div></div>
+  </dialog>
+  <script src="/static/app.js?v=22"></script>
+</body>
+</html>
